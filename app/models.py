@@ -56,6 +56,7 @@ class Interview(Base):
     job_role_id: Mapped[int] = mapped_column(ForeignKey("job_roles.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(32), index=True, default=InterviewStatus.SCHEDULED)
     scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    consent_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     twilio_call_sid: Mapped[str | None] = mapped_column(String(64), unique=True)

@@ -61,6 +61,13 @@ def main() -> None:
         with TestClient(app) as c:
             check(c.get("/health").status_code == 200, "health")
             check(c.post("/job-roles", json={}).status_code == 401, "admin API key required")
+            no_consent = c.post(
+                "/interviews/intake",
+                headers=headers,
+                data={"email": "candidate@example.com", "phone": "+14155550123", "candidate_consented": "false"},
+                files={"resume": ("cv.docx", resume_docx(), "application/octet-stream")},
+            )
+            check(no_consent.status_code == 403, "automated interview intake requires candidate consent")
 
             r = c.post("/job-roles", headers=headers, json={
                 "title": "Backend Engineer",

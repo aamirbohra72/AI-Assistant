@@ -1,6 +1,52 @@
 # AI Voice Interviewer
 
-FastAPI backend for scheduling AI-led phone interviews, streaming the conversation, and generating interview reports. See [architecture.md](architecture.md) for the system diagram and component overview.
+FastAPI backend for scheduling AI-led phone interviews, streaming the conversation, and generating interview reports. See [architecture.md](architecture.md) for the detailed system diagram, interview lifecycle, and component overview.
+
+## Architecture
+
+```mermaid
+flowchart LR
+   Recruiter[Recruiter / HR system]
+   Candidate[Candidate on phone]
+
+   subgraph App[AI Voice Interviewer - FastAPI]
+      API[REST API]
+      Worker[Background worker]
+      Session[Live call session]
+      Agent[Interview agent]
+      VAD[Silero voice detection]
+   end
+
+   subgraph Data[Persistence and queue]
+      DB[(PostgreSQL)]
+      Redis[(Redis)]
+   end
+
+   subgraph Providers[External providers]
+      Twilio[Twilio]
+      Gemini[Google Gemini]
+      Deepgram[Deepgram STT]
+      ElevenLabs[ElevenLabs TTS]
+   end
+
+   Recruiter -->|HTTPS API and API key| API
+   API -->|Candidates, roles, interviews| DB
+   API -->|Parse resume and generate rubric| Gemini
+   API -->|Queue scheduled call| Redis
+   Worker -->|Claim calls and scoring jobs| Redis
+   Worker -->|Load and update records| DB
+   Worker -->|Place outbound call| Twilio
+   Candidate <-->|Phone audio| Twilio
+   Twilio <-->|Secure media WebSocket| Session
+   Session --> VAD
+   Session <-->|Speech recognition| Deepgram
+   Session <--> Agent
+   Agent <-->|Interview responses| Gemini
+   Agent -->|Spoken responses| ElevenLabs
+   Session -->|Transcript and status| DB
+   Session <-->|Call state| Redis
+   Worker -->|Score interview and save report| DB
+```
 
 ## Requirements
 
@@ -93,6 +139,12 @@ For real calls, deploy the service or expose your local server through a public 
 - `wss://<PUBLIC_BASE_URL>/media-stream/{interview_id}` for the bidirectional audio stream
 
 Twilio must be able to reach the service over HTTPS and secure WebSockets. Schedule the interview through the API, or start a scheduled interview with `POST /interviews/{interview_id}/start` and the `X-Internal-Token` header. Keep `TWILIO_VALIDATE_SIGNATURES=true` outside isolated local testing.
+
+### Automatic FDE Intake
+
+`POST /interviews/intake` accepts a resume, email, phone, and `candidate_consented=true` as multipart form data. It extracts the candidate name from the resume, creates or reuses the Forward Deployed Engineer role (4-5 years; Python, FastAPI, and React), creates a 15-minute interview, records the consent timestamp, and queues the call immediately. The in-process worker places the outbound call. This endpoint requires `X-API-Key` and can make a real phone call as soon as the worker claims the queue item; use it only after the candidate has agreed to the AI interview and transcription.
+
+Open `/docs`, select `POST /interviews/intake`, enter the form fields, upload a PDF or DOCX resume, and set `candidate_consented` to `true` only after consent has been obtained. The phone must be in E.164 format. A successful response includes the candidate, role, and interview IDs. Check `/interviews/{interview_id}` for call status, then `/transcript` and `/report` for results. Apply the new database migration before using this endpoint (`alembic upgrade head`); Render's configured pre-deploy command does this during deploy.
 
 ## Deploy to Render
 

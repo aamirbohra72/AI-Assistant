@@ -75,9 +75,19 @@ class InterviewOut(BaseModel):
     job_role_id: int
     status: str
     scheduled_at: datetime
+    consent_confirmed_at: datetime | None
     started_at: datetime | None
     ended_at: datetime | None
     twilio_call_sid: str | None
+
+
+class InterviewIntakeOut(BaseModel):
+    candidate_id: int
+    job_role_id: int
+    interview_id: int
+    status: str
+    scheduled_at: datetime
+    consent_confirmed_at: datetime
 
 
 class TranscriptTurnOut(BaseModel):
