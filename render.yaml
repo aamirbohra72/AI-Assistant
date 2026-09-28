@@ -2,9 +2,8 @@ services:
   - type: web
     name: ai-voice-interviewer
     runtime: python
-    # Paid, always-on instance. The free tier spins down when idle and restarts during deploys,
-    # which drops live Twilio WebSocket calls and stops the in-process scheduler.
-    plan: starter
+    # Free testing instance; upgrade this plan for reliable, always-on phone interviews.
+    plan: free
     region: singapore # co-located with Neon ap-southeast-1
     # Single instance: live call sessions and the scheduler run in-process.
     numInstances: 1

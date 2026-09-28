@@ -96,7 +96,9 @@ Twilio must be able to reach the service over HTTPS and secure WebSockets. Sched
 
 ## Deploy to Render
 
-The included `render.yaml` describes the web service, dependency installation, Silero model download, migration command, health check, and runtime settings. Create the PostgreSQL and Redis services separately, then provide their URLs and the required provider credentials as Render environment variables. Set `PUBLIC_BASE_URL` to the deployed HTTPS URL. Render applies migrations before starting the service.
+The included `render.yaml` describes a free web service for testing, including dependency installation, Silero model download, migration command, health check, and runtime settings. Create the PostgreSQL and Redis services separately, then provide their URLs and the required provider credentials as Render environment variables. Set `PUBLIC_BASE_URL` to the deployed HTTPS URL. Render applies migrations before starting the service.
+
+The free web service can spin down when idle and restart at any time, so use it for testing rather than relying on it for live phone interviews. If you use Render's free Postgres, its database expires after 30 days; free Key Value (Redis) data is not persisted across restarts. Upgrade the web service and choose durable data stores before production use.
 
 ## Useful Commands
 
