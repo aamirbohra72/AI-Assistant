@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: ai-voice-interviewer
+    runtime: python
+    # Paid, always-on instance. The free tier spins down when idle and restarts during deploys,
+    # which drops live Twilio WebSocket calls and stops the in-process scheduler.
+    plan: starter
+    region: singapore # co-located with Neon ap-southeast-1
+    # Single instance: live call sessions and the scheduler run in-process.
+    numInstances: 1
+    buildCommand: pip install -r requirements.txt && python -m scripts.download_vad
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*' --ws-ping-interval 20 --ws-ping-timeout 20
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: ENV
+        value: production
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: INTERNAL_API_TOKEN
+        generateValue: true
+      - key: STREAM_TOKEN_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_FLASH_MODEL
+        value: gemini-flash-latest
+      - key: GEMINI_PRO_MODEL
+        value: gemini-pro-latest
+      - key: GEMINI_SCORING_FALLBACK_MODEL
+        value: gemini-3.7-flash
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: INTERVIEWER_NAME
+        value: Alex
+      - key: COMPANY_NAME
+        sync: false
+      - key: RUN_WORKER_IN_WEB
+        value: "true"
