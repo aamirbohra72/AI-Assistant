@@ -32,6 +32,8 @@ services:
         sync: false
       - key: GEMINI_FLASH_MODEL
         value: gemini-flash-latest
+      - key: GEMINI_RESUME_FALLBACK_MODEL
+        value: gemini-3.7-flash
       - key: GEMINI_PRO_MODEL
         value: gemini-pro-latest
       - key: GEMINI_SCORING_FALLBACK_MODEL

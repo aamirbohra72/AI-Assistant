@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str
     GEMINI_FLASH_MODEL: str = "gemini-flash-latest"
+    GEMINI_RESUME_FALLBACK_MODEL: str = "gemini-3.7-flash"
     GEMINI_PRO_MODEL: str = "gemini-pro-latest"
     # Used for scoring when the Pro model fails (e.g. Pro has no free-tier quota).
     GEMINI_SCORING_FALLBACK_MODEL: str = "gemini-flash-latest"

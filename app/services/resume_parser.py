@@ -1,10 +1,16 @@
 import asyncio
 import base64
 import io
+import logging
 from typing import Any
 
+import httpx
+
 from app.config import get_settings
+from app.logging_setup import log_event
 from app.services import gemini
+
+logger = logging.getLogger(__name__)
 
 _STR = {"type": "STRING"}
 _STR_LIST = {"type": "ARRAY", "items": _STR}
@@ -101,11 +107,27 @@ async def resume_to_parts(data: bytes, filename: str) -> list[dict[str, Any]]:
 
 
 async def parse_resume(parts: list[dict[str, Any]]) -> dict[str, Any]:
-    return await gemini.generate_json(
-        model=get_settings().GEMINI_FLASH_MODEL,
-        system=_SYSTEM,
-        contents=[gemini.user_message("Extract this resume into the schema.", *parts)],
-        schema=RESUME_SCHEMA,
-        temperature=0.0,
-        timeout=90.0,
-    )
+    settings = get_settings()
+    contents = [gemini.user_message("Extract this resume into the schema.", *parts)]
+    request = {
+        "system": _SYSTEM,
+        "contents": contents,
+        "schema": RESUME_SCHEMA,
+        "temperature": 0.0,
+        "timeout": 90.0,
+    }
+    try:
+        return await gemini.generate_json(model=settings.GEMINI_FLASH_MODEL, **request)
+    except httpx.HTTPStatusError as exc:
+        fallback = settings.GEMINI_RESUME_FALLBACK_MODEL
+        if exc.response.status_code not in {429, 500, 502, 503, 504} or fallback == settings.GEMINI_FLASH_MODEL:
+            raise
+        log_event(
+            logger,
+            "resume parsing primary model unavailable; trying fallback",
+            logging.WARNING,
+            primary_model=settings.GEMINI_FLASH_MODEL,
+            fallback_model=fallback,
+            upstream_status=exc.response.status_code,
+        )
+        return await gemini.generate_json(model=fallback, **request)
