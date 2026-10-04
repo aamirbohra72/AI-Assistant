@@ -1,12 +1,14 @@
 import asyncio
 import base64
 import io
+import json
 import logging
 from typing import Any
 
 import httpx
 
 from app.config import get_settings
+from app.http_client import request_with_retry
 from app.logging_setup import log_event
 from app.services import gemini
 
@@ -106,8 +108,71 @@ async def resume_to_parts(data: bytes, filename: str) -> list[dict[str, Any]]:
     raise UnsupportedResumeError("Resume must be a PDF or DOCX file")
 
 
+def _json_schema(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: item.lower() if key == "type" and isinstance(item, str) else _json_schema(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_json_schema(item) for item in value]
+    return value
+
+
+def _resume_text(parts: list[dict[str, Any]]) -> str:
+    from pypdf import PdfReader
+
+    texts = []
+    for part in parts:
+        if "text" in part:
+            texts.append(part["text"])
+        elif (part.get("inlineData") or {}).get("mimeType") == "application/pdf":
+            data = base64.b64decode(part["inlineData"]["data"], validate=True)
+            reader = PdfReader(io.BytesIO(data))
+            for page in reader.pages:
+                texts.append(page.extract_text() or "")
+    text = "\n".join(texts).strip()
+    if not text:
+        raise UnsupportedResumeError("Groq requires resume text; scanned PDFs need OCR or the Gemini provider")
+    return text[:60000]
+
+
+async def _parse_resume_groq(parts: list[dict[str, Any]]) -> dict[str, Any]:
+    from jsonschema import validate
+
+    settings = get_settings()
+    if not settings.GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY is required when RESUME_PROVIDER=groq")
+    text = await asyncio.to_thread(_resume_text, parts)
+    schema = _json_schema(RESUME_SCHEMA)
+    response = await request_with_retry(
+        "POST",
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+        json={
+            "model": settings.GROQ_RESUME_MODEL,
+            "messages": [
+                {"role": "system", "content": _SYSTEM + " Return only a JSON object matching this schema: " + json.dumps(schema)},
+                {"role": "user", "content": "Extract this resume into JSON:\n\n" + text},
+            ],
+            "temperature": 0.0,
+            "response_format": {"type": "json_object"},
+            "max_completion_tokens": 8192,
+        },
+        timeout=httpx.Timeout(90.0, connect=5.0),
+    )
+    choice = response.json()["choices"][0]
+    if choice.get("finish_reason") != "stop":
+        raise ValueError("Groq resume response did not finish successfully")
+    result = json.loads(choice["message"]["content"])
+    validate(instance=result, schema=schema)
+    return result
+
+
 async def parse_resume(parts: list[dict[str, Any]]) -> dict[str, Any]:
     settings = get_settings()
+    if settings.RESUME_PROVIDER == "groq":
+        return await _parse_resume_groq(parts)
     contents = [gemini.user_message("Extract this resume into the schema.", *parts)]
     request = {
         "system": _SYSTEM,

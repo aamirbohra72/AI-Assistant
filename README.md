@@ -148,6 +148,12 @@ Open `/docs`, select `POST /interviews/intake`, enter the form fields, upload a 
 
 ## Deploy to Render
 
+### Optional Groq Resume Parsing
+
+To avoid Gemini availability errors during resume parsing, set `RESUME_PROVIDER=groq`, `GROQ_API_KEY` to your Groq secret, and `GROQ_RESUME_MODEL=llama-3.3-70b-versatile` in the web service environment, then redeploy. Groq receives extracted PDF or DOCX text, not the original file. Scanned/image-only PDFs require OCR or `RESUME_PROVIDER=gemini`. Groq JSON responses are validated against the resume schema. Gemini remains the default; interview conversation, rubric generation, and scoring still use Gemini and require `GEMINI_API_KEY`. Provider limits and outages can still cause parsing failures.
+
+Run the isolated resume-provider checks with `python -m unittest scripts.test_resume_parser`; these tests do not call external APIs or schedule interviews.
+
 The included `render.yaml` describes a free web service for testing, including dependency installation, Silero model download, migration command, health check, and runtime settings. Create the PostgreSQL and Redis services separately, then provide their URLs and the required provider credentials as Render environment variables. Set `PUBLIC_BASE_URL` to the deployed HTTPS URL. Render applies migrations before starting the service.
 
 Render's pre-deploy command is only available for paid web services, so this single-instance free service runs `python -m alembic upgrade head` in its start command. For an existing service not managed by a Blueprint, update Settings > Start Command to match `render.yaml` and redeploy. The server will not start if migrations fail. If you scale to multiple instances, move migrations to a dedicated deployment step.

@@ -37,6 +37,12 @@ services:
         value: gemini-pro-latest
       - key: GEMINI_SCORING_FALLBACK_MODEL
         value: gemini-3.7-flash
+      - key: RESUME_PROVIDER
+        value: gemini
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_RESUME_MODEL
+        value: llama-3.3-70b-versatile
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN

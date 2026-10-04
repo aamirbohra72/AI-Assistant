@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,10 @@ class Settings(BaseSettings):
     GEMINI_SCORING_FALLBACK_MODEL: str = "gemini-flash-latest"
     # 0 disables "thinking" on Flash for lowest latency; set empty to use the model default.
     GEMINI_FLASH_THINKING_BUDGET: int | None = 0
+
+    RESUME_PROVIDER: Literal["gemini", "groq"] = "gemini"
+    GROQ_API_KEY: str = ""
+    GROQ_RESUME_MODEL: str = "llama-3.3-70b-versatile"
 
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
