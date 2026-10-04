@@ -8,8 +8,7 @@ services:
     # Single instance: live call sessions and the scheduler run in-process.
     numInstances: 1
     buildCommand: pip install -r requirements.txt && python -m scripts.download_vad
-    preDeployCommand: alembic upgrade head
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*' --ws-ping-interval 20 --ws-ping-timeout 20
+    startCommand: python -m alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*' --ws-ping-interval 20 --ws-ping-timeout 20
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
